@@ -1,0 +1,56 @@
+{
+  "name": "@oada/oadaify",
+  "version": "1.0.0",
+  "description": "Make OADA data nicer to work with in JS/TS",
+  "keywords": [
+    "oada",
+    "JSON",
+    "symbol"
+  ],
+  "author": "Alex Layton <alex@layton.in>",
+  "homepage": "https://github.com/OADA/oadaify",
+  "repository": "https://github.com/OADA/oadaify.git",
+  "bugs": "https://github.com/OADA/oadaify/issues",
+  "license": "MIT",
+  "private": false,
+  "engines": {
+    "node": ">=12"
+  },
+  "main": "lib/index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "src",
+    "lib",
+    "tsconfig.json"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "pretest": "npm run build",
+    "test": "ava",
+    "prepare": "npm run build"
+  },
+  "ava": {
+    "typescript": {
+      "rewritePaths": {
+        "src/": "lib/"
+      }
+    }
+  },
+  "devDependencies": {
+    "@ava/typescript": "^1.1.1",
+    "@tsconfig/node12": "^1.0.7",
+    "@types/node": "^14.14.22",
+    "ajv": "^7.0.3",
+    "ava": "^3.15.0",
+    "jsonschema8": "^1.1.1",
+    "prettier": "^2.2.1",
+    "ts-expect": "^1.1.0",
+    "typescript": "^4.1.3"
+  },
+  "dependencies": {
+    "type-fest": "^0.20.2"
+  }
+}
