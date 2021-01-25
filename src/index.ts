@@ -30,16 +30,22 @@ export const Symbols = <const>{
 };
 
 // Yes these are defined in type-fest, but mine are slightly different...
-type JsonObject = { [Key in string]?: JsonValue };
-type JsonArray = readonly JsonValue[];
-type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+export type JsonObject = { [Key in string]?: JsonValue };
+export type JsonArray = readonly JsonValue[];
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonObject
+  | JsonArray;
 
 type OADAified<T> = T extends JsonValue ? OADAifiedJsonValue<T> : never;
 
 /**
  * @todo Better name
  */
-export type OADAifiedJsonObject<T extends JsonObject> = {
+export type OADAifiedJsonObject<T extends JsonObject = JsonObject> = {
   [_id]: OADAified<T['_id']>;
   [_rev]: OADAified<T['_rev']>;
   [_type]: OADAified<T['_type']>;
@@ -55,7 +61,7 @@ export type OADAifiedJsonObject<T extends JsonObject> = {
  * @todo Better name
  */
 export type OADAifiedJsonArray<
-  T extends JsonArray
+  T extends JsonArray = JsonArray
 > = readonly OADAifiedJsonValue<T extends readonly (infer R)[] ? R : never>[];
 
 /**
