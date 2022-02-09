@@ -51,19 +51,21 @@ export type JsonValue =
   | JsonObject
   | JsonArray;
 
-type OADAified<T> = T extends JsonValue ? OADAifiedJsonValue<T> : never;
+export type OADAified<T> = T extends JsonValue ? OADAifiedJsonValue<T> : T;
+
+type OADAifyKey<T, K> = K extends keyof T ? T[K] : never;
 
 /**
  * @todo Better name
  */
 export type OADAifiedJsonObject<T extends JsonObject = JsonObject> = {
-  [_id]?: OADAified<T['_id']>;
-  [_rev]?: OADAified<T['_rev']>;
-  [_type]?: OADAified<T['_type']>;
+  [_id]: OADAifyKey<T, '_id'>;
+  [_rev]: OADAifyKey<T, '_rev'>;
+  [_type]: OADAifyKey<T, '_type'>;
   /**
    * @todo OADAify under _meta or not?
    */
-  [_meta]?: OADAified<T['_meta']>;
+  [_meta]: OADAified<T['_meta']>;
 } & {
   [K in keyof Except<T, keyof typeof Symbols>]: OADAified<T[K]>;
 };
@@ -92,9 +94,7 @@ export type OADAifiedJsonValue<T extends JsonValue = JsonValue> =
  */
 export type StringKey<T extends JsonObject> = keyof T & string;
 
-function isArray<T>(
-  value: T | T[] | readonly T[]
-): value is T[] | readonly T[] {
+function isArray(value: unknown): value is unknown[] | readonly unknown[] {
   return Array.isArray(value);
 }
 
@@ -104,10 +104,10 @@ function isArray<T>(
  * This way when looping etc. you only get actual data keys.
  * _Should_ turn itself back to original JSON for stringify, ajv, etc.
  */
-export function oadaify<T extends Readonly<JsonValue>>(
+export function oadaify<T extends JsonValue>(
   value: T,
   deep?: boolean
-): OADAifiedJsonValue<T>;
+): OADAified<T>;
 export function oadaify(value: JsonValue, deep = true): OADAifiedJsonValue {
   if (!value || typeof value !== 'object') {
     // Nothing to OADAify
@@ -121,7 +121,7 @@ export function oadaify(value: JsonValue, deep = true): OADAifiedJsonValue {
       : (Array.from(value) as OADAifiedJsonArray);
   }
 
-  const out: OADAifiedJsonObject = deep
+  const out: Partial<OADAifiedJsonObject> = deep
     ? Object.fromEntries(
         Object.entries(value).map(([k, v]) => [k, oadaify(v!)!])
       )
@@ -169,7 +169,7 @@ export function oadaify(value: JsonValue, deep = true): OADAifiedJsonValue {
   // Make the JSON still right
   Object.defineProperty(out, 'toJSON', { enumerable: false, value: toJSON });
 
-  return out;
+  return out as OADAifiedJsonObject;
 }
 
 /**
@@ -179,9 +179,7 @@ export function oadaify(value: JsonValue, deep = true): OADAifiedJsonValue {
  *
  * @see oadaify
  */
-export function deoadaify<T extends JsonValue>(
-  value: OADAifiedJsonValue<T>
-): T {
+export function deoadaify<T extends JsonValue>(value: OADAified<T>): T {
   if (!value || typeof value !== 'object') {
     return value as T;
   }
@@ -191,7 +189,7 @@ export function deoadaify<T extends JsonValue>(
   }
 
   const out = Object.fromEntries(
-    Object.entries(value).map(([k, v]) => [k, deoadaify<JsonValue>(v)])
+    Object.entries(value).map(([k, v]) => [k, deoadaify<JsonValue>(v!)])
   );
 
   // Add OADA keys

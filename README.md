@@ -1,6 +1,6 @@
 # @OADA/oadaify
 
-A library to make working with OADA data in JavaSript/TypeScript less annoying.
+A library to make working with OADA data in JavaScript/TypeScript less annoying.
 
 I was always writing loops with checks to skip `_` keys,
 or forgetting to add the check and my code did something weird.

@@ -17,7 +17,7 @@ import test from 'ava';
 
 import { expectType } from 'ts-expect';
 
-import { StringKey, _id, oadaify } from '../';
+import { StringKey, _id, _meta, _rev, oadaify } from '../';
 
 test('should allow accessing OADA keys via symbol', (t) => {
   const input = <const>{
@@ -52,13 +52,33 @@ test('OADA keys should not appear in loop', (t) => {
 
 test('OADA keys should not appear in output type', (t) => {
   const input = <const>{
-    _id: 'resources/1223',
+    _id: 'resources/123',
     _rev: 2,
     _meta: {},
     foo: 'bar',
     foo2: 'baz',
   };
   const output = oadaify(input);
-  expectType<{ foo: 'bar'; foo2: 'baz' }>(output);
+  // @ts-expect-error Should not match this type
+  expectType<{ foo: 'bar'; foo2: 'baz'; _id: 'resources/123' }>(output);
+  t.pass();
+});
+
+test('OADA symbols should appear in output type', (t) => {
+  const input = <const>{
+    _id: 'resources/123',
+    _rev: 2,
+    _meta: {},
+    foo: 'bar',
+    foo2: 'baz',
+  };
+  const output = oadaify(input);
+  expectType<{
+    [_id]: 'resources/123';
+    [_rev]: 2;
+    [_meta]: Record<string, unknown>;
+    foo: 'bar';
+    foo2: 'baz';
+  }>(output);
   t.pass();
 });
