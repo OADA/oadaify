@@ -1,4 +1,13 @@
 /**
+ * @license
+ * Copyright 2022 Alex Layton
+ *
+ * Use of this source code is governed by an MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT.
+ */
+
+/**
  * Tests for working with JSON arrays
  *
  * @packageDocumentation
@@ -10,7 +19,7 @@ import { expectType } from 'ts-expect';
 import { oadaify } from '../';
 
 test('Should work with arrays', (t) => {
-  const arr = [
+  const array = [
     <const>{
       _id: 'resources/1223',
       _rev: 2,
@@ -26,25 +35,22 @@ test('Should work with arrays', (t) => {
       foo2: 'baz',
     },
   ];
-  const output = oadaify(arr);
+  const output = oadaify(array);
   expectType<
-    {
+    ReadonlyArray<{
       // Only the shared non-OADA keys
       foo: 'bar';
-    }[]
+    }>
   >(output);
   for (const out of output) {
-    const o: any = {};
-    for (const key in out) {
-      o[key] = out[key as keyof typeof out];
-    }
+    const o = { ...out };
     t.like(o, { foo: 'bar' });
   }
 });
 
 // TS can get mad about const arrays if you do stuff wrong
 test('Should work with const arrays', (t) => {
-  const arr = <const>[
+  const array = <const>[
     {
       _id: 'resources/1223',
       _rev: 2,
@@ -60,18 +66,15 @@ test('Should work with const arrays', (t) => {
       foo2: 'baz',
     },
   ];
-  const output = oadaify(arr);
+  const output = oadaify(array);
   expectType<
-    readonly {
+    ReadonlyArray<{
       // Only the shared non-OADA keys
       foo: 'bar';
-    }[]
+    }>
   >(output);
   for (const out of output) {
-    const o: any = {};
-    for (const key in out) {
-      o[key] = out[key as keyof typeof out];
-    }
+    const o = { ...out };
     t.like(o, { foo: 'bar' });
   }
 });

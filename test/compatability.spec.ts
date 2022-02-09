@@ -1,4 +1,13 @@
 /**
+ * @license
+ * Copyright 2022 Alex Layton
+ *
+ * Use of this source code is governed by an MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT.
+ */
+
+/**
  * Tests for playing nicely with JSON, ajv, etc.
  *
  * @packageDocumentation
@@ -35,7 +44,7 @@ test('should include OADA keys in JSON', (t) => {
     },
   };
   const output = oadaify(input);
-  const json = JSON.parse(JSON.stringify(output));
+  const json: unknown = JSON.parse(JSON.stringify(output));
   t.deepEqual(json, input);
 });
 

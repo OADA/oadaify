@@ -4,7 +4,7 @@ A library to make working with OADA data in JavaSript/TypeScript less annoying.
 
 I was always writing loops with checks to skip `_` keys,
 or forgetting to add the check and my code did something weird.
-This makes loops etc. do what one expecst and wants 99% of the time.
+This makes loops etc. do what one expects and wants 99% of the time.
 The library exports `Symbol`s which can be used to access the OADA keys.
 
 The OADAified objects still function correctly with `JSON.stringify` and `ajv`.

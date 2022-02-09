@@ -1,4 +1,13 @@
 /**
+ * @license
+ * Copyright 2022 Alex Layton
+ *
+ * Use of this source code is governed by an MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT.
+ */
+
+/**
  * Tests for working with JSON primitives
  *
  * @packageDocumentation
@@ -50,6 +59,7 @@ test('Should work with false', (t) => {
 // Check falsy
 test('Should work with null', (t) => {
   const nil = oadaify(null);
+  // eslint-disable-next-line @typescript-eslint/ban-types
   expectType<null>(nil);
   t.is(nil, null);
 });

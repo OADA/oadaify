@@ -1,5 +1,14 @@
+/**
+ * @license
+ * Copyright 2022 Alex Layton
+ *
+ * Use of this source code is governed by an MIT-style
+ * license that can be found in the LICENSE file or at
+ * https://opensource.org/licenses/MIT.
+ */
+
 // This is better than Omit
-import type { Except, Mutable } from 'type-fest';
+import type { Except } from 'type-fest';
 
 // TS is dumb about symbol keys
 /**
@@ -20,9 +29,10 @@ export const _type: unique symbol = Symbol('_type');
 export const _meta: unique symbol = Symbol('_meta');
 
 /**
- * @todo just declare symbols in here is TS stops being dumb about symbol keys
+ * @todo just declare symbols in here if TS stops being dumb about symbol keys
  */
-export const Symbols = <const>{
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const Symbols = <const>{
   _id,
   _rev,
   _type,
@@ -31,11 +41,12 @@ export const Symbols = <const>{
 
 // Yes these are defined in type-fest, but mine are slightly different...
 export type JsonObject = { [Key in string]?: JsonValue };
-export type JsonArray = readonly JsonValue[];
+export type JsonArray = JsonValue[] | readonly JsonValue[];
 export type JsonValue =
   | string
   | number
   | boolean
+  // eslint-disable-next-line @typescript-eslint/ban-types
   | null
   | JsonObject
   | JsonArray;
@@ -46,13 +57,13 @@ type OADAified<T> = T extends JsonValue ? OADAifiedJsonValue<T> : never;
  * @todo Better name
  */
 export type OADAifiedJsonObject<T extends JsonObject = JsonObject> = {
-  [_id]: OADAified<T['_id']>;
-  [_rev]: OADAified<T['_rev']>;
-  [_type]: OADAified<T['_type']>;
+  [_id]?: OADAified<T['_id']>;
+  [_rev]?: OADAified<T['_rev']>;
+  [_type]?: OADAified<T['_type']>;
   /**
    * @todo OADAify under _meta or not?
    */
-  [_meta]: OADAified<T['_meta']>;
+  [_meta]?: OADAified<T['_meta']>;
 } & {
   [K in keyof Except<T, keyof typeof Symbols>]: OADAified<T[K]>;
 };
@@ -60,25 +71,32 @@ export type OADAifiedJsonObject<T extends JsonObject = JsonObject> = {
 /**
  * @todo Better name
  */
-export type OADAifiedJsonArray<
-  T extends JsonArray = JsonArray
-> = readonly OADAifiedJsonValue<T extends readonly (infer R)[] ? R : never>[];
+export type OADAifiedJsonArray<T extends JsonArray = JsonArray> = Array<
+  OADAifiedJsonValue<
+    T extends Array<infer R> ? R : T extends ReadonlyArray<infer R> ? R : never
+  >
+>;
 
 /**
  * @todo Better name
  */
-export type OADAifiedJsonValue<
-  T extends JsonValue = JsonValue
-> = T extends JsonArray
-  ? OADAifiedJsonArray<T>
-  : T extends JsonObject
-  ? OADAifiedJsonObject<T>
-  : T;
+export type OADAifiedJsonValue<T extends JsonValue = JsonValue> =
+  T extends JsonArray
+    ? OADAifiedJsonArray<T>
+    : T extends JsonObject
+    ? OADAifiedJsonObject<T>
+    : T;
 
 /**
  * @todo why doesn't TS figure this correctly with for ... in?
  */
 export type StringKey<T extends JsonObject> = keyof T & string;
+
+function isArray<T>(
+  value: T | T[] | readonly T[]
+): value is T[] | readonly T[] {
+  return Array.isArray(value);
+}
 
 /**
  * Converts OADA keys (i.e., ones starting with `_`) to Symbols
@@ -86,56 +104,66 @@ export type StringKey<T extends JsonObject> = keyof T & string;
  * This way when looping etc. you only get actual data keys.
  * _Should_ turn itself back to original JSON for stringify, ajv, etc.
  */
-export function oadaify<T extends JsonValue>(
-  value: T
-): Mutable<OADAifiedJsonValue<T>>;
-export function oadaify(
-  value: Readonly<JsonValue>
-): Mutable<OADAifiedJsonValue<JsonValue>> {
+export function oadaify<T extends Readonly<JsonValue>>(
+  value: T,
+  deep?: boolean
+): OADAifiedJsonValue<T>;
+export function oadaify(value: JsonValue, deep = true): OADAifiedJsonValue {
   if (!value || typeof value !== 'object') {
     // Nothing to OADAify
     return value;
   }
 
-  if (Array.isArray(value)) {
-    // Map outself over arrays
-    return (value as JsonArray).map((val) => {
-      const out = oadaify(val);
-      return out;
-    });
+  if (isArray(value)) {
+    // Map ourself over arrays
+    return deep
+      ? value.map((v) => oadaify(v)!)
+      : (Array.from(value) as OADAifiedJsonArray);
   }
 
-  // TODO: Why is TS being dumb and thinking it can be an array here?
-  const obj = value as JsonObject;
-  const out = {} as OADAifiedJsonObject<JsonObject>;
-  for (const key in obj) {
-    // Recurse
-    out[key] = oadaify(obj[key]!);
-  }
-  // Preserve symbols
-  for (const sym of Object.getOwnPropertySymbols(obj)) {
-    // TS is a jerk about symbol indexing. This line is prefectly vaild.
-    // @ts-ignore
-    out[sym] = obj[sym];
-  }
+  const out: OADAifiedJsonObject = deep
+    ? Object.fromEntries(
+        Object.entries(value).map(([k, v]) => [k, oadaify(v!)!])
+      )
+    : ({ ...value } as unknown as OADAifiedJsonObject);
 
   // OADAify any OADA keys
   // Have to explicitly handle each symbol for TS to understand...
-  if (out.hasOwnProperty('_id')) {
-    out[_id] = out._id + '';
-    Object.defineProperty(out, '_id', { enumerable: false });
+  if ('_id' in value) {
+    // eslint-disable-next-line security/detect-object-injection
+    out[_id] = `${value._id}`;
+    Object.defineProperty(out, '_id', {
+      value: value._id,
+      enumerable: false,
+    });
   }
-  if (out.hasOwnProperty('_rev')) {
-    out[_rev] = +out._rev!;
-    Object.defineProperty(out, '_rev', { enumerable: false });
+
+  if ('_rev' in value) {
+    // eslint-disable-next-line security/detect-object-injection
+    out[_rev] = Number(value._rev);
+    Object.defineProperty(out, '_rev', {
+      value: value._rev,
+      enumerable: false,
+    });
   }
-  if (out.hasOwnProperty('_type')) {
-    out[_type] = out._type + '';
-    Object.defineProperty(out, '_type', { enumerable: false });
+
+  if ('_type' in value) {
+    // eslint-disable-next-line security/detect-object-injection
+    out[_type] = `${value._type}`;
+    Object.defineProperty(out, '_type', {
+      value: value._type,
+      enumerable: false,
+    });
   }
-  if (out.hasOwnProperty('_meta')) {
-    out[_meta] = out._meta as OADAified<JsonObject>;
-    Object.defineProperty(out, '_meta', { enumerable: false });
+
+  // TODO: Should _meta be OADAified?
+  if ('_meta' in value) {
+    // eslint-disable-next-line security/detect-object-injection
+    out[_meta] = value._meta as OADAifiedJsonValue;
+    Object.defineProperty(out, '_meta', {
+      value: value._meta,
+      enumerable: false,
+    });
   }
 
   // Make the JSON still right
@@ -153,43 +181,47 @@ export function oadaify(
  */
 export function deoadaify<T extends JsonValue>(
   value: OADAifiedJsonValue<T>
-): Mutable<T>;
-export function deoadaify(value: OADAifiedJsonValue): Mutable<JsonValue> {
+): T {
   if (!value || typeof value !== 'object') {
-    return value;
+    return value as T;
   }
 
   if (Array.isArray(value)) {
-    return value.map(deoadaify);
+    return value.map((v) => deoadaify<JsonValue>(v)) as unknown as T;
   }
 
-  const out: JsonObject = {};
-  // TODO: Why is TS being dumb and thinking it can be an array here?
-  const obj = value as OADAifiedJsonObject<JsonObject>;
-  for (const [key, val] of Object.entries(obj)) {
-    out[key] = deoadaify<JsonValue>(val);
-  }
+  const out = Object.fromEntries(
+    Object.entries(value).map(([k, v]) => [k, deoadaify<JsonValue>(v)])
+  );
+
   // Add OADA keys
-  if (obj.hasOwnProperty(_id)) {
-    out._id = obj[_id];
-  }
-  if (obj.hasOwnProperty(_rev)) {
-    out._rev = obj[_rev];
-  }
-  if (obj.hasOwnProperty(_type)) {
-    out._type = obj[_type];
-  }
-  if (obj.hasOwnProperty(_meta)) {
-    out._meta = obj[_meta];
+  if (Object.prototype.hasOwnProperty.call(value, _id)) {
+    // eslint-disable-next-line security/detect-object-injection
+    out._id = value[_id]!;
   }
 
-  return out;
+  if (Object.prototype.hasOwnProperty.call(value, _rev)) {
+    // eslint-disable-next-line security/detect-object-injection
+    out._rev = value[_rev]!;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(value, _type)) {
+    // eslint-disable-next-line security/detect-object-injection
+    out._type = value[_type]!;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(value, _meta)) {
+    // eslint-disable-next-line security/detect-object-injection
+    out._meta = value[_meta]!;
+  }
+
+  return out as T;
 }
 
 /**
  * Makes the OADA keys reappear for JSON.stringify
  */
-function toJSON(this: OADAifiedJsonObject<JsonObject>) {
+function toJSON(this: OADAifiedJsonObject) {
   return deoadaify(this);
 }
 
